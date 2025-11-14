@@ -12,6 +12,7 @@ import { UserProfile, DailySummary } from './types/nutrition';
 import { User, LoginCredentials, SignupCredentials } from './types/auth';
 import { getUserProfile, getTodaysSummary, getTodaysFoodItems } from './utils/storage';
 import { getCurrentUser, login, signup, logout } from './utils/auth';
+import apiClient from './utils/api';
 
 function App() {
   const [user, setUser] = useState<User | null>(null);
@@ -35,16 +36,22 @@ function App() {
   // Load data on component mount
   useEffect(() => {
     const currentUser = getCurrentUser();
-    setUser(currentUser);
-    loadUserData();
+    if (currentUser) {
+      setUser(currentUser);
+      loadUserData();
+    }
   }, []);
 
-  const loadUserData = () => {
-    const userProfile = getUserProfile();
-    setProfile(userProfile);
-    
-    const summary = getTodaysSummary(userProfile);
-    setTodaysSummary(summary);
+  const loadUserData = async () => {
+    try {
+      const userProfile = await getUserProfile();
+      setProfile(userProfile);
+      
+      const summary = await getTodaysSummary(userProfile);
+      setTodaysSummary(summary);
+    } catch (error) {
+      console.error('Error loading user data:', error);
+    }
   };
 
   const handleTabChange = (tab: string) => {
@@ -110,7 +117,7 @@ function App() {
         return (
           <FoodLogger 
             onFoodAdded={handleDataUpdate} 
-            todaysFood={getTodaysFoodItems()}
+            todaysFood={todaysSummary.foods}
           />
         );
       case 'summary':

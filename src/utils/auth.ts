@@ -1,103 +1,96 @@
 import { User, LoginCredentials, SignupCredentials } from '../types/auth';
+import apiClient from './api';
 
-const AUTH_STORAGE_KEY = 'calorie_buddy_auth';
-const USERS_STORAGE_KEY = 'calorie_buddy_users';
-
-// Mock user database
-export function getUsers(): User[] {
-  const stored = localStorage.getItem(USERS_STORAGE_KEY);
-  return stored ? JSON.parse(stored) : [];
-}
-
-export function saveUser(user: User): void {
-  const users = getUsers();
-  const existingIndex = users.findIndex(u => u.id === user.id);
-  
-  if (existingIndex >= 0) {
-    users[existingIndex] = user;
-  } else {
-    users.push(user);
-  }
-  
-  localStorage.setItem(USERS_STORAGE_KEY, JSON.stringify(users));
-}
+const AUTH_STORAGE_KEY = 'calorie_buddy_user';
 
 export function getCurrentUser(): User | null {
   const stored = localStorage.getItem(AUTH_STORAGE_KEY);
   if (!stored) return null;
   
-  const authData = JSON.parse(stored);
-  return {
-    ...authData.user,
-    createdAt: new Date(authData.user.createdAt),
-    lastLogin: new Date(authData.user.lastLogin)
-  };
+  try {
+    const user = JSON.parse(stored);
+    return {
+      ...user,
+      createdAt: new Date(user.createdAt),
+      lastLogin: new Date(user.lastLogin)
+    };
+  } catch (error) {
+    console.error('Error parsing stored user:', error);
+    return null;
+  }
 }
 
 export function setCurrentUser(user: User): void {
-  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify({ user }));
+  localStorage.setItem(AUTH_STORAGE_KEY, JSON.stringify(user));
 }
 
 export function clearCurrentUser(): void {
   localStorage.removeItem(AUTH_STORAGE_KEY);
+  apiClient.setToken(null);
 }
 
 export async function login(credentials: LoginCredentials): Promise<User> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const users = getUsers();
-  const user = users.find(u => u.email === credentials.email);
-  
-  if (!user) {
-    throw new Error('User not found');
+  try {
+    const response: any = await apiClient.login(credentials);
+    
+    if (response.success) {
+      const { user, token } = response.data;
+      
+      // Set token for future requests
+      apiClient.setToken(token);
+      
+      // Store user data
+      setCurrentUser(user);
+      
+      return user;
+    } else {
+      throw new Error(response.message || 'Login failed');
+    }
+  } catch (error) {
+    console.error('Login error:', error);
+    throw error;
   }
-  
-  // In a real app, you'd verify the password hash
-  // For demo purposes, we'll accept any password
-  
-  const updatedUser = {
-    ...user,
-    lastLogin: new Date()
-  };
-  
-  saveUser(updatedUser);
-  setCurrentUser(updatedUser);
-  
-  return updatedUser;
 }
 
 export async function signup(credentials: SignupCredentials): Promise<User> {
-  // Simulate API delay
-  await new Promise(resolve => setTimeout(resolve, 1000));
-  
-  const users = getUsers();
-  const existingUser = users.find(u => u.email === credentials.email);
-  
-  if (existingUser) {
-    throw new Error('User already exists');
+  try {
+    if (credentials.password !== credentials.confirmPassword) {
+      throw new Error('Passwords do not match');
+    }
+
+    const response: any = await apiClient.register({
+      name: credentials.name,
+      email: credentials.email,
+      password: credentials.password
+    });
+    
+    if (response.success) {
+      const { user, token } = response.data;
+      
+      // Set token for future requests
+      apiClient.setToken(token);
+      
+      // Store user data
+      setCurrentUser(user);
+      
+      return user;
+    } else {
+      throw new Error(response.message || 'Signup failed');
+    }
+  } catch (error) {
+    console.error('Signup error:', error);
+    throw error;
   }
-  
-  if (credentials.password !== credentials.confirmPassword) {
-    throw new Error('Passwords do not match');
-  }
-  
-  const newUser: User = {
-    id: Date.now().toString(),
-    email: credentials.email,
-    name: credentials.name,
-    createdAt: new Date(),
-    lastLogin: new Date()
-  };
-  
-  saveUser(newUser);
-  setCurrentUser(newUser);
-  
-  return newUser;
 }
 
 export function logout(): void {
   clearCurrentUser();
+}
+
+// Initialize API client with stored token
+const storedToken = localStorage.getItem('auth_token');
+if (storedToken) {
+  apiClient.setToken(storedToken);
 }
 
 export function validateEmail(email: string): boolean {

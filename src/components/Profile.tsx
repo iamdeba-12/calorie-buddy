@@ -27,7 +27,7 @@ export default function Profile({ profile, onProfileUpdate }: ProfileProps) {
     setFormData(prev => ({ ...prev, [field]: value }));
   };
 
-  const handleSave = () => {
+  const handleSave = async () => {
     if (!formData.name || !formData.email || !formData.age || !formData.weight || !formData.height) {
       alert('Please fill in all required fields');
       return;
@@ -52,9 +52,14 @@ export default function Profile({ profile, onProfileUpdate }: ProfileProps) {
       createdAt: profile?.createdAt || new Date()
     };
 
-    saveUserProfile(updatedProfile);
-    setIsEditing(false);
-    onProfileUpdate();
+    try {
+      await saveUserProfile(updatedProfile);
+      setIsEditing(false);
+      onProfileUpdate();
+    } catch (error) {
+      console.error('Error saving profile:', error);
+      alert('Failed to save profile. Please try again.');
+    }
   };
 
   const bmi = formData.weight && formData.height 

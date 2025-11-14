@@ -1,7 +1,7 @@
 import React, { useState } from 'react';
 import { Search, Plus, Trash2, Undo, CheckCircle, Camera, Mic, Sparkles } from 'lucide-react';
 import { FoodItem, NutritionAnalysis } from '../types/nutrition';
-import { parseNutritionInput } from '../data/foodDatabase';
+import apiClient from '../utils/api';
 import { saveFoodItem, removeFoodItem } from '../utils/storage';
 
 interface FoodLoggerProps {
@@ -20,15 +20,25 @@ export default function FoodLogger({ onFoodAdded, todaysFood }: FoodLoggerProps)
     
     setIsAnalyzing(true);
     
-    // Simulate API delay
-    setTimeout(() => {
-      const results = parseNutritionInput(input);
-      setAnalysis(results);
+    // Use API for food analysis
+    apiClient.analyzeFood(input)
+      .then((response: any) => {
+        if (response.success) {
+          setAnalysis(response.data.analysis);
+        } else {
+          throw new Error(response.message);
+        }
+      })
+      .catch((error) => {
+        console.error('Food analysis error:', error);
+        setAnalysis([]);
+      })
+      .finally(() => {
       setIsAnalyzing(false);
-    }, 500);
+      });
   };
 
-  const handleAddFood = (analysisItem: NutritionAnalysis) => {
+  const handleAddFood = async (analysisItem: NutritionAnalysis) => {
     const foodItem: FoodItem = {
       id: Date.now().toString(),
       name: analysisItem.food,
@@ -41,33 +51,48 @@ export default function FoodLogger({ onFoodAdded, todaysFood }: FoodLoggerProps)
       timestamp: new Date()
     };
     
-    saveFoodItem(foodItem);
-    setLastAction({ type: 'add', food: foodItem });
-    onFoodAdded();
-    setInput('');
-    setAnalysis([]);
+    try {
+      await saveFoodItem(foodItem);
+      setLastAction({ type: 'add', food: foodItem });
+      onFoodAdded();
+      setInput('');
+      setAnalysis([]);
+    } catch (error) {
+      console.error('Error adding food:', error);
+      alert('Failed to add food item. Please try again.');
+    }
   };
 
-  const handleRemoveFood = (foodId: string) => {
+  const handleRemoveFood = async (foodId: string) => {
     const food = todaysFood.find(f => f.id === foodId);
     if (food) {
-      removeFoodItem(foodId);
-      setLastAction({ type: 'remove', food });
-      onFoodAdded();
+      try {
+        await removeFoodItem(foodId);
+        setLastAction({ type: 'remove', food });
+        onFoodAdded();
+      } catch (error) {
+        console.error('Error removing food:', error);
+        alert('Failed to remove food item. Please try again.');
+      }
     }
   };
 
-  const handleUndo = () => {
+  const handleUndo = async () => {
     if (!lastAction) return;
     
-    if (lastAction.type === 'add') {
-      removeFoodItem(lastAction.food.id);
-    } else {
-      saveFoodItem(lastAction.food);
+    try {
+      if (lastAction.type === 'add') {
+        await removeFoodItem(lastAction.food.id);
+      } else {
+        await saveFoodItem(lastAction.food);
+      }
+      
+      setLastAction(null);
+      onFoodAdded();
+    } catch (error) {
+      console.error('Error undoing action:', error);
+      alert('Failed to undo action. Please try again.');
     }
-    
-    setLastAction(null);
-    onFoodAdded();
   };
 
   const totalCalories = todaysFood.reduce((sum, food) => sum + food.calories, 0);
