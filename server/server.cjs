@@ -2,7 +2,7 @@ const express = require('express');
 const cors = require('cors');
 const dotenv = require('dotenv');
 const path = require('path');
-const connectDB = require('./config/database');
+const connectDB = require('./config/database.cjs');
 
 // Load environment variables
 dotenv.config();
@@ -28,9 +28,9 @@ app.use((req, res, next) => {
 });
 
 // Routes
-app.use('/api/auth', require('./routes/auth'));
-app.use('/api/food', require('./routes/food'));
-app.use('/api/recommendations', require('./routes/recommendations'));
+app.use('/api/auth', require('./routes/auth.cjs'));
+app.use('/api/food', require('./routes/food.cjs'));
+app.use('/api/recommendations', require('./routes/recommendations.cjs'));
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {

@@ -1,8 +1,8 @@
 const express = require('express');
-const FoodItem = require('../models/FoodItem');
-const auth = require('../middleware/auth');
+const FoodItem = require('../models/FoodItem.cjs');
+const auth = require('../middleware/auth.cjs');
 const { body, validationResult } = require('express-validator');
-const { parseNutritionInput } = require('../utils/foodParser');
+const { parseNutritionInput } = require('../utils/foodParser.cjs');
 
 const router = express.Router();
 

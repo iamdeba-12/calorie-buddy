@@ -1,7 +1,7 @@
 const express = require('express');
-const auth = require('../middleware/auth');
-const FoodItem = require('../models/FoodItem');
-const { getMealRecommendations } = require('../utils/recommendationEngine');
+const auth = require('../middleware/auth.cjs');
+const FoodItem = require('../models/FoodItem.cjs');
+const { getMealRecommendations } = require('../utils/recommendationEngine.cjs');
 
 const router = express.Router();
 
